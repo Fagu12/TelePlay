@@ -1,6 +1,6 @@
 """
 PyroTGFork MTProto client for Telegram interactions.
-Handles both bot commands and file streaming via a client pool.
+Fixed version for Railway deployment.
 """
 
 from .patch import Client
@@ -13,41 +13,60 @@ import logging
 
 settings = get_settings()
 
-# Absolute path for session files
 BASE_DIR = Path(__file__).resolve().parent.parent
 SESSION_DIR = BASE_DIR / "session"
 
 logger = logging.getLogger(__name__)
 
 clients = []
-tg_client = None
 
 
 def get_session_name(index: int) -> str:
     return str(SESSION_DIR / f"bot_{index}")
 
 
+# CREATE MAIN CLIENT IMMEDIATELY
+# This fixes:
+# AttributeError: 'NoneType' object has no attribute 'on_message'
+main_token = settings.all_bot_tokens[0]
+
+tg_client = Client(
+    name=get_session_name(0),
+    api_id=settings.telegram_api_id,
+    api_hash=settings.telegram_api_hash,
+    bot_token=main_token,
+    ipv6=False,
+    max_concurrent_transmissions=settings.telegram_client_concurrency,
+    no_updates=False,
+)
+
+clients.append(tg_client)
+
+
 async def start_one_client(i, token):
     global tg_client
 
     try:
-        client = Client(
-            name=get_session_name(i),
-            api_id=settings.telegram_api_id,
-            api_hash=settings.telegram_api_hash,
-            bot_token=token,
-            ipv6=False,
-            max_concurrent_transmissions=settings.telegram_client_concurrency,
-            no_updates=(i > 0),
-        )
+        # Main client already created
+        if i == 0:
+            client = tg_client
+        else:
+            client = Client(
+                name=get_session_name(i),
+                api_id=settings.telegram_api_id,
+                api_hash=settings.telegram_api_hash,
+                bot_token=token,
+                ipv6=False,
+                max_concurrent_transmissions=settings.telegram_client_concurrency,
+                no_updates=True,
+            )
 
-        await client.start()
+            clients.append(client)
+
+        if not client.is_connected:
+            await client.start()
 
         client.pool_index = i
-        clients.append(client)
-
-        if i == 0:
-            tg_client = client
 
         me = await client.get_me()
 
@@ -81,20 +100,14 @@ async def stop_all_clients():
 
 
 async def start_telegram_client():
-    """Called from app lifespan — starts the full pool."""
     await start_all_clients()
 
 
 async def stop_telegram_client():
-    """Called from app lifespan — stops the full pool."""
     await stop_all_clients()
 
 
-# ── convenience helpers ───────────────────────────────────────────────
-
 async def get_message_from_channel(message_id: int) -> Message:
-    """Get a message from the storage channel by ID."""
-
     if tg_client is None:
         raise RuntimeError("Telegram client not started")
 
@@ -105,8 +118,6 @@ async def get_message_from_channel(message_id: int) -> Message:
 
 
 async def forward_to_storage_channel(message: Message) -> Message:
-    """Forward a message to the storage channel."""
-
     if tg_client is None:
         raise RuntimeError("Telegram client not started")
 
@@ -114,8 +125,6 @@ async def forward_to_storage_channel(message: Message) -> Message:
 
 
 async def delete_from_storage_channel(message_ids: int | list[int]) -> bool:
-    """Delete message(s) from the storage channel."""
-
     if tg_client is None:
         return False
 
