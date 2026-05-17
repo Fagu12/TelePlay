@@ -6,8 +6,7 @@ Handles commands, file uploads, and inline callbacks.
 import secrets
 import string
 from datetime import datetime, timedelta
-from pyrogram import filters
-from .patch import Client
+from pyrogram import Client, filters
 from pyrogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from sqlalchemy import select, func
 
@@ -594,7 +593,7 @@ async def handle_file(client, message: Message):
 
 # ============== Callback Query Handlers ==============
 
-@tg_client.on_callback_query()
+@Client.on_callback_query()
 async def handle_callback(client, callback: CallbackQuery):
     """Handle inline button callbacks."""
     data = callback.data
