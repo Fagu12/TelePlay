@@ -2,6 +2,7 @@
 PyroTGFork MTProto client for Telegram interactions.
 Handles both bot commands and file streaming via a client pool.
 """
+
 from .patch import Client
 from pyrogram.types import Message
 from .config import get_settings
@@ -16,52 +17,55 @@ settings = get_settings()
 BASE_DIR = Path(__file__).resolve().parent.parent
 SESSION_DIR = BASE_DIR / "session"
 
+logger = logging.getLogger(__name__)
+
+clients = []
+tg_client = None
+
 
 def get_session_name(index: int) -> str:
     return str(SESSION_DIR / f"bot_{index}")
 
 
-# Build a pool: main token first, then any helper tokens
-tokens = settings.all_bot_tokens
-clients = []
+async def start_one_client(i, token):
+    global tg_client
 
-for i, token in enumerate(tokens):
-    client = Client(
-        name=get_session_name(i),
-        api_id=settings.telegram_api_id,
-        api_hash=settings.telegram_api_hash,
-        bot_token=token,
-        ipv6=False,
-        max_concurrent_transmissions=settings.telegram_client_concurrency,
-        no_updates=(i > 0),
-    )
-
-    client.pool_index = i
-    clients.append(client)
-
-# Main client
-tg_client = clients[0]
-
-
-# ── lifecycle helpers ────────────────────────────────────────────────
-logger = logging.getLogger(__name__)
-
-
-async def start_one_client(i, c):
     try:
-        if not c.is_connected:
-            await c.start()
+        client = Client(
+            name=get_session_name(i),
+            api_id=settings.telegram_api_id,
+            api_hash=settings.telegram_api_hash,
+            bot_token=token,
+            ipv6=False,
+            max_concurrent_transmissions=settings.telegram_client_concurrency,
+            no_updates=(i > 0),
+        )
 
-        me = await c.get_me()
+        await client.start()
+
+        client.pool_index = i
+        clients.append(client)
+
+        if i == 0:
+            tg_client = client
+
+        me = await client.get_me()
+
         label = "Main" if i == 0 else "Helper"
-        logger.info("Client %d (%s) started → @%s", i, label, me.username)
+        logger.info("Client %d (%s) started -> @%s", i, label, me.username)
 
     except Exception as e:
         logger.error("Client %d failed to start: %s", i, e)
 
+
 async def start_all_clients():
-    logger.info("Starting %d Telegram client(s)...", len(clients))
-    await asyncio.gather(*(start_one_client(i, c) for i, c in enumerate(clients)))
+    logger.info("Starting Telegram client(s)...")
+
+    tokens = settings.all_bot_tokens
+
+    await asyncio.gather(
+        *(start_one_client(i, token) for i, token in enumerate(tokens))
+    )
 
 
 async def stop_one_client(c):
@@ -86,10 +90,14 @@ async def stop_telegram_client():
     await stop_all_clients()
 
 
-# ── convenience helpers (always use tg_client) ───────────────────────
+# ── convenience helpers ───────────────────────────────────────────────
 
 async def get_message_from_channel(message_id: int) -> Message:
     """Get a message from the storage channel by ID."""
+
+    if tg_client is None:
+        raise RuntimeError("Telegram client not started")
+
     return await tg_client.get_messages(
         settings.telegram_storage_channel_id,
         message_id,
@@ -98,12 +106,19 @@ async def get_message_from_channel(message_id: int) -> Message:
 
 async def forward_to_storage_channel(message: Message) -> Message:
     """Forward a message to the storage channel."""
-    return await message.copy(settings.telegram_storage_channel_id)
 
+    if tg_client is None:
+        raise RuntimeError("Telegram client not started")
+
+    return await message.copy(settings.telegram_storage_channel_id)
 
 
 async def delete_from_storage_channel(message_ids: int | list[int]) -> bool:
     """Delete message(s) from the storage channel."""
+
+    if tg_client is None:
+        return False
+
     try:
         await tg_client.delete_messages(
             settings.telegram_storage_channel_id,
@@ -112,4 +127,3 @@ async def delete_from_storage_channel(message_ids: int | list[int]) -> bool:
         return True
     except Exception:
         return False
-
