@@ -7,6 +7,7 @@ import secrets
 import string
 from datetime import datetime, timedelta
 from pyrogram import filters
+from .patch import Client
 from pyrogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from sqlalchemy import select, func
 
