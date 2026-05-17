@@ -1,13 +1,13 @@
 """
 Database setup with SQLAlchemy async support.
 Supports both SQLite (for development) and PostgreSQL (for production).
-Includes SSL support for Railway PostgreSQL deployments.
+Fixed for Railway PostgreSQL SSL requirements.
 """
-import ssl
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.engine import make_url
 from .config import get_settings
+import os
 
 settings = get_settings()
 
@@ -27,17 +27,12 @@ if url.drivername == "postgresql":
         del query["schema"]
         url = url.set(query=query)
     
-    # PostgreSQL on Railway requires SSL
-    # Create an SSL context with certificate verification
-    ssl_context = ssl.create_default_context()
-    ssl_context.check_hostname = True
-    ssl_context.verify_mode = ssl.CERT_REQUIRED
-    
-    # Connection arguments for PostgreSQL
+    # Railway PostgreSQL requires SSL but with specific settings
+    # Use simple SSL without certificate verification (Railway uses self-signed certs)
     connect_args = {
-        "ssl": ssl_context,
-        "timeout": 60,
-        "command_timeout": 60,
+        "ssl": "require",  # Simpler approach that works with asyncpg
+        "timeout": 30,
+        "command_timeout": 30,
     }
 
 elif url.drivername == "sqlite":
@@ -49,14 +44,14 @@ elif url.drivername == "sqlite":
         "timeout": 30,
     }
 
-# Create async engine with optimized settings
+# Create async engine with optimized settings for Railway
 engine = create_async_engine(
     url,
     echo=False,
     pool_pre_ping=True,         # Test connections before using them
     pool_recycle=1800,          # Recycle connections every 30 minutes
-    pool_size=20,               # Conservative pool size (reduced from 40 for stability)
-    max_overflow=10,            # Reduced overflow for stability
+    pool_size=10,               # Conservative pool size for Railway
+    max_overflow=5,             # Reduced overflow for Railway stability
     connect_args=connect_args,
 )
 
