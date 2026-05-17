@@ -1285,3 +1285,30 @@ async def deletefolder_command(client, message: Message):
         ])
     )
 
+def register_handlers(app):
+
+    app.on_message(
+        filters.command("start") & filters.private
+    )(start_command)
+
+    app.on_message(
+        filters.command("help") & filters.private
+    )(help_command)
+
+    app.on_message(
+        filters.command("login") & filters.private
+    )(login_command)
+
+    app.on_message(
+        filters.private &
+        (
+            filters.video |
+            filters.audio |
+            filters.document |
+            filters.photo
+        )
+    )(handle_file)
+
+    app.on_callback_query()(handle_callback)
+
+    print("Handlers registered")

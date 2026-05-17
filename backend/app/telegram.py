@@ -46,6 +46,9 @@ async def start_one_client(i, token):
         if not client.is_connected:
             await client.start()
 
+        from . import bot
+        bot.register_handlers(client)
+
         # IMPORTANT FIX:
         # remove stale webhook/update state
         try:
