@@ -1,13 +1,11 @@
 """
 Database setup with SQLAlchemy async support.
-Supports both SQLite (for development) and PostgreSQL (for production).
-Fixed for Railway PostgreSQL SSL requirements.
+Optimized for Railway's internal PostgreSQL service (postgres.railway.internal).
 """
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.engine import make_url
 from .config import get_settings
-import os
 
 settings = get_settings()
 
@@ -21,37 +19,31 @@ if url.drivername == "postgresql":
     # Convert to asyncpg driver (async-compatible PostgreSQL driver)
     url = url.set(drivername="postgresql+asyncpg")
     
-    # Remove 'schema' from query params if present (asyncpg doesn't support it)
+    # Remove 'schema' from query params if present
     if "schema" in url.query:
         query = dict(url.query)
         del query["schema"]
         url = url.set(query=query)
     
-    # Railway PostgreSQL requires SSL but with specific settings
-    # Use simple SSL without certificate verification (Railway uses self-signed certs)
+    # Railway internal service: NO SSL needed for internal connections
+    # Use simple configuration
     connect_args = {
-        "ssl": "require",  # Simpler approach that works with asyncpg
         "timeout": 30,
         "command_timeout": 30,
     }
 
 elif url.drivername == "sqlite":
-    # Convert to aiosqlite driver (async-compatible SQLite driver)
     url = url.set(drivername="sqlite+aiosqlite")
-    
-    # SQLite connection arguments
-    connect_args = {
-        "timeout": 30,
-    }
+    connect_args = {"timeout": 30}
 
-# Create async engine with optimized settings for Railway
+# Create async engine
 engine = create_async_engine(
     url,
     echo=False,
-    pool_pre_ping=True,         # Test connections before using them
-    pool_recycle=1800,          # Recycle connections every 30 minutes
-    pool_size=10,               # Conservative pool size for Railway
-    max_overflow=5,             # Reduced overflow for Railway stability
+    pool_pre_ping=True,
+    pool_recycle=1800,
+    pool_size=10,
+    max_overflow=5,
     connect_args=connect_args,
 )
 
