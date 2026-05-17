@@ -6,7 +6,8 @@ Handles commands, file uploads, and inline callbacks.
 import secrets
 import string
 from datetime import datetime, timedelta
-from .patch import Client, filters
+from .patch import Client
+from pyrogram import filters
 from pyrogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from sqlalchemy import select, func
 
