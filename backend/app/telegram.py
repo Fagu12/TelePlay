@@ -78,7 +78,6 @@ async def stop_all_clients():
 
 async def start_telegram_client():
     """Called from app lifespan — starts the full pool."""
-    await build_clients()
     await start_all_clients()
 
 
