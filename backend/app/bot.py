@@ -100,7 +100,7 @@ def get_web_app_button(telegram_id: int, text: str = "🌐 Open Web") -> InlineK
 
 # ============== Authorization Middleware ==============
 
-@tg_client.on_message(filters.private, group=-2)
+@Client.on_message(filters.private, group=-2)
 async def check_auth(client, message: Message):
     """Check if the user is authorized to use the bot."""
     auth_users = settings.auth_users
@@ -123,7 +123,7 @@ async def check_auth(client, message: Message):
 
 # ============== Command Handlers ==============
 
-@tg_client.on_message(filters.command("start") & filters.private)
+@Client.on_message(filters.command("start") & filters.private)
 async def start_command(client, message: Message):
     """Welcome message and bot instructions. Also handles deep-linked login codes."""
     await get_or_create_user(
@@ -192,7 +192,7 @@ async def start_command(client, message: Message):
     )
 
 
-@tg_client.on_message(filters.command("help") & filters.private)
+@Client.on_message(filters.command("help") & filters.private)
 async def help_command(client, message: Message):
     """Show help message."""
     await message.reply(
@@ -253,7 +253,7 @@ async def help_command(client, message: Message):
     )
 
 
-@tg_client.on_message(filters.command("myfiles") & filters.private)
+@Client.on_message(filters.command("myfiles") & filters.private)
 async def myfiles_command(client, message: Message):
     """List user's recent files."""
     async with async_session() as db:
@@ -294,7 +294,7 @@ async def myfiles_command(client, message: Message):
     )
 
 
-@tg_client.on_message(filters.command("folders") & filters.private)
+@Client.on_message(filters.command("folders") & filters.private)
 async def folders_command(client, message: Message):
     """Show folder structure."""
     async with async_session() as db:
@@ -339,7 +339,7 @@ async def folders_command(client, message: Message):
     )
 
 
-@tg_client.on_message(filters.command("newfolder") & filters.private)
+@Client.on_message(filters.command("newfolder") & filters.private)
 async def newfolder_command(client, message: Message):
     """Create a new folder."""
     if len(message.command) < 2:
@@ -379,7 +379,7 @@ async def newfolder_command(client, message: Message):
     await message.reply(f"✅ Folder **{folder_name}** created!")
 
 
-@tg_client.on_message(filters.command("web") & filters.private)
+@Client.on_message(filters.command("web") & filters.private)
 async def web_command(client, message: Message):
     """Get authenticated web interface link."""
     user = await get_or_create_user(
@@ -400,7 +400,7 @@ async def web_command(client, message: Message):
     )
 
 
-@tg_client.on_message(filters.command("login") & filters.private)
+@Client.on_message(filters.command("login") & filters.private)
 async def login_command(client, message: Message):
     """
     Handle login command.
@@ -469,7 +469,7 @@ async def login_command(client, message: Message):
 
     return
 
-@tg_client.on_message(filters.command("logout_all") & filters.private)
+@Client.on_message(filters.command("logout_all") & filters.private)
 async def logout_all_command(client, message: Message):
     """
     Invalidate all active sessions for the current user.
@@ -498,7 +498,7 @@ async def logout_all_command(client, message: Message):
 
 # ============== File Handler ==============
 
-@tg_client.on_message(filters.private & (filters.video | filters.audio | filters.document | filters.photo))
+@Client.on_message(filters.private & (filters.video | filters.audio | filters.document | filters.photo))
 async def handle_file(client, message: Message):
     """Handle uploaded files - forward to channel and save to DB."""
     # Get or create user
@@ -1171,7 +1171,7 @@ async def handle_callback(client, callback: CallbackQuery):
 
 # ============== File Action Command ==============
 
-@tg_client.on_message(filters.command("file") & filters.private)
+@Client.on_message(filters.command("file") & filters.private)
 async def file_command(client, message: Message):
     """Manage a specific file by ID."""
     if len(message.command) < 2:
@@ -1238,7 +1238,7 @@ async def file_command(client, message: Message):
     )
 
 
-@tg_client.on_message(filters.command("deletefolder") & filters.private)
+@Client.on_message(filters.command("deletefolder") & filters.private)
 async def deletefolder_command(client, message: Message):
     """Delete a folder by name."""
     if len(message.command) < 2:
