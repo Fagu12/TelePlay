@@ -31,6 +31,7 @@ engine = create_async_engine(
     max_overflow=20,    # Allow more overflow connections
     connect_args={"timeout": 30} if url.drivername.startswith("sqlite") else {}
 )
+
 async_session = async_sessionmaker(
     engine, 
     class_=AsyncSession, 
@@ -66,6 +67,6 @@ async def init_db():
 async def dispose_db():
     """
     Properly dispose of the engine and close all connections.
-    Call this during FastAPI shutdown.
+    Called during FastAPI shutdown (lifespan context manager in main.py).
     """
     await engine.dispose()

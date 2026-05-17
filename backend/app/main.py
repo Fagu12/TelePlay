@@ -17,7 +17,7 @@ import logging
 logging.getLogger("pyrogram").setLevel(logging.INFO)
 
 from .config import get_settings
-from .database import init_db
+from .database import init_db, dispose_db  # ← UPDATED: Added dispose_db
 from .telegram import start_telegram_client, stop_telegram_client
 from .routers import files_router, folders_router, streaming_router, auth_router, tv_router
 
@@ -36,17 +36,35 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan - start/stop Telegram client and init DB."""
-    logger.info("Starting TelePlay Backend...")
-    await init_db()
-    logger.info("Database initialized")
-    await start_telegram_client()
-    logger.info("Telegram client started")
+    logger.info("🚀 Starting TelePlay Backend...")
+    try:
+        await init_db()
+        logger.info("✓ Database initialized")
+    except Exception as e:
+        logger.error(f"✗ Failed to initialize database: {e}")
+        raise
+    
+    try:
+        await start_telegram_client()
+        logger.info("✓ Telegram client started")
+    except Exception as e:
+        logger.error(f"✗ Failed to start Telegram client: {e}")
+        raise
     
     yield
     
-    logger.info("Shutting down...")
-    await stop_telegram_client()
-    logger.info("Telegram client stopped")
+    logger.info("🛑 Shutting down TelePlay Backend...")
+    try:
+        await stop_telegram_client()
+        logger.info("✓ Telegram client stopped")
+    except Exception as e:
+        logger.error(f"✗ Error stopping Telegram client: {e}")
+    
+    try:
+        await dispose_db()  # ← UPDATED: Added database disposal
+        logger.info("✓ Database connections closed")
+    except Exception as e:
+        logger.error(f"✗ Error disposing database: {e}")
 
 
 app = FastAPI(
@@ -109,7 +127,6 @@ app.include_router(files_router, prefix="/api")
 app.include_router(folders_router, prefix="/api")
 app.include_router(streaming_router, prefix="/api")
 app.include_router(tv_router, prefix="/api")
-
 
 
 
