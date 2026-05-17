@@ -28,9 +28,16 @@ engine = create_async_engine(
     pool_pre_ping=True,
     pool_recycle=1800,  # Recycle connections every 30 minutes
     pool_size=40,       # Increased pool size for high concurrency
-    max_overflow=20     # Allow more overflow connections
+    max_overflow=20,    # Allow more overflow connections
+    connect_args={"timeout": 30} if url.drivername.startswith("sqlite") else {}
 )
-async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+async_session = async_sessionmaker(
+    engine, 
+    class_=AsyncSession, 
+    expire_on_commit=False,
+    autoflush=False,
+    autocommit=False
+)
 
 
 class Base(DeclarativeBase):
@@ -48,5 +55,17 @@ async def get_db():
 
 async def init_db():
     """Create all tables."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as e:
+        print(f"Error initializing database: {e}")
+        raise
+
+
+async def dispose_db():
+    """
+    Properly dispose of the engine and close all connections.
+    Call this during FastAPI shutdown.
+    """
+    await engine.dispose()
