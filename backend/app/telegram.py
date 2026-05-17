@@ -21,34 +21,26 @@ def get_session_name(index: int) -> str:
     return str(SESSION_DIR / f"bot_{index}")
 
 
-# Build clients lazily inside the running event loop
+# Build a pool: main token first, then any helper tokens
+tokens = settings.all_bot_tokens
 clients = []
-tg_client = None
 
+for i, token in enumerate(tokens):
+    client = Client(
+        name=get_session_name(i),
+        api_id=settings.telegram_api_id,
+        api_hash=settings.telegram_api_hash,
+        bot_token=token,
+        ipv6=False,
+        max_concurrent_transmissions=settings.telegram_client_concurrency,
+        no_updates=(i > 0),
+    )
 
-async def build_clients():
-    global clients, tg_client
+    client.pool_index = i
+    clients.append(client)
 
-    if clients:
-        return
-
-    tokens = settings.all_bot_tokens
-
-    for i, token in enumerate(tokens):
-        client = Client(
-            name=get_session_name(i),
-            api_id=settings.telegram_api_id,
-            api_hash=settings.telegram_api_hash,
-            bot_token=token,
-            ipv6=False,
-            max_concurrent_transmissions=settings.telegram_client_concurrency,
-            no_updates=(i > 0),
-        )
-
-        client.pool_index = i
-        clients.append(client)
-
-    tg_client = clients[0]
+# Main client
+tg_client = clients[0]
 
 
 # ── lifecycle helpers ────────────────────────────────────────────────
@@ -57,13 +49,15 @@ logger = logging.getLogger(__name__)
 
 async def start_one_client(i, c):
     try:
-        await c.start()
+        if not c.is_connected:
+            await c.start()
+
         me = await c.get_me()
         label = "Main" if i == 0 else "Helper"
         logger.info("Client %d (%s) started → @%s", i, label, me.username)
+
     except Exception as e:
         logger.error("Client %d failed to start: %s", i, e)
-
 
 async def start_all_clients():
     logger.info("Starting %d Telegram client(s)...", len(clients))
