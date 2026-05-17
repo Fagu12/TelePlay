@@ -26,6 +26,7 @@ from .routers import (
     tv_router,
 )
 
+from . import bot
 
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("pyrogram").setLevel(logging.INFO)
