@@ -1,15 +1,13 @@
 """
 PyroTGFork MTProto client for Telegram interactions.
-Fixed version for Railway deployment.
+Fully fixed Railway-compatible version.
 """
 
 from .patch import Client
 from pyrogram.types import Message
 from .config import get_settings
 from pathlib import Path
-import asyncio
 import logging
-
 
 settings = get_settings()
 
@@ -26,7 +24,7 @@ def get_session_name(index: int) -> str:
 
 
 # CREATE MAIN CLIENT IMMEDIATELY
-# This fixes:
+# Prevents:
 # AttributeError: 'NoneType' object has no attribute 'on_message'
 main_token = settings.all_bot_tokens[0]
 
@@ -47,7 +45,7 @@ async def start_one_client(i, token):
     global tg_client
 
     try:
-        # Main client already created
+        # Main client already exists
         if i == 0:
             client = tg_client
         else:
@@ -71,20 +69,32 @@ async def start_one_client(i, token):
         me = await client.get_me()
 
         label = "Main" if i == 0 else "Helper"
-        logger.info("Client %d (%s) started -> @%s", i, label, me.username)
+        logger.info(
+            "Client %d (%s) started -> @%s",
+            i,
+            label,
+            me.username,
+        )
 
     except Exception as e:
         logger.error("Client %d failed to start: %s", i, e)
 
 
 async def start_all_clients():
+    """
+    IMPORTANT:
+    Sequential startup fixes:
+    got Future attached to a different loop
+    """
+
     logger.info("Starting Telegram client(s)...")
 
     tokens = settings.all_bot_tokens
 
-    await asyncio.gather(
-        *(start_one_client(i, token) for i, token in enumerate(tokens))
-    )
+    # DO NOT USE asyncio.gather HERE
+    # Pyrogram breaks on Railway with concurrent startup
+    for i, token in enumerate(tokens):
+        await start_one_client(i, token)
 
 
 async def stop_one_client(c):
@@ -96,7 +106,8 @@ async def stop_one_client(c):
 
 
 async def stop_all_clients():
-    await asyncio.gather(*(stop_one_client(c) for c in clients))
+    for c in clients:
+        await stop_one_client(c)
 
 
 async def start_telegram_client():
@@ -106,6 +117,8 @@ async def start_telegram_client():
 async def stop_telegram_client():
     await stop_all_clients()
 
+
+# HELPERS
 
 async def get_message_from_channel(message_id: int) -> Message:
     if tg_client is None:
@@ -121,10 +134,14 @@ async def forward_to_storage_channel(message: Message) -> Message:
     if tg_client is None:
         raise RuntimeError("Telegram client not started")
 
-    return await message.copy(settings.telegram_storage_channel_id)
+    return await message.copy(
+        settings.telegram_storage_channel_id
+    )
 
 
-async def delete_from_storage_channel(message_ids: int | list[int]) -> bool:
+async def delete_from_storage_channel(
+    message_ids: int | list[int]
+) -> bool:
     if tg_client is None:
         return False
 
@@ -134,5 +151,6 @@ async def delete_from_storage_channel(message_ids: int | list[int]) -> bool:
             message_ids,
         )
         return True
+
     except Exception:
         return False
