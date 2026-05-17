@@ -34,10 +34,11 @@ engine = create_async_engine(
     url, 
     echo=False,
     pool_pre_ping=True,
-    pool_recycle=1800,  # Recycle connections every 30 minutes
-    pool_size=40,       # Increased pool size for high concurrency
-    max_overflow=20,    # Allow more overflow connections
-    connect_args=connect_args  # 3. Add this exact line here
+    pool_recycle=300,  # REDUCED: Recycle every 5 minutes before the network drops them
+    pool_size=10,      # REDUCED: 10 connections is plenty for an async app starting out
+    max_overflow=5,    # REDUCED: Only allow 5 overflow connections
+    connect_args=connect_args  
+
 
 )
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
