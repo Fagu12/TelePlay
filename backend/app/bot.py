@@ -151,6 +151,7 @@ async def start_command(client, message: Message):
                         "✅ **Success!**\n"
                         "You have successfully logged in on your device.\n"
                         "You can now enjoy watching! 🍿"
+                        "✨ 𝐹𝛥𝐺𝑈."
                     )
                     return
                 elif login_code.telegram_id:
@@ -182,7 +183,8 @@ async def start_command(client, message: Message):
         "/help - Full help guide\n\n"
         
         "💡 After uploading, you'll get the **File ID**\n"
-        "Use `/file <id>` to rename, move, or delete.",
+        "Use `/file <id>` to rename, move, or delete."
+        "✨ 𝐹𝛥𝐺𝑈.",
         reply_markup=InlineKeyboardMarkup([
             [get_web_app_button(message.from_user.id, "🌐 Open Web Interface")],
             [
@@ -251,6 +253,7 @@ async def help_command(client, message: Message):
         "• Use /web to get a secure link\n"
         "• Use /login on TV app to connect\n"
         "• Watch progress syncs across devices\n"
+        "✨ 𝐹𝛥𝐺𝑈."
     )
 
 
@@ -383,8 +386,6 @@ async def newfolder_command(client, message: Message):
 @Client.on_message(filters.command("web") & filters.private)
 async def web_command(client, message: Message):
     try:
-        print("WEB COMMAND START")
-
         await get_or_create_user(
             message.from_user.id,
             message.from_user.username,
@@ -392,23 +393,23 @@ async def web_command(client, message: Message):
             message.from_user.last_name,
         )
 
-        print("WEB_BASE_URL =", settings.web_base_url)
+        base_url = str(settings.web_base_url).strip()
 
-        token = create_access_token(message.from_user.id)
+        token = str(create_access_token(message.from_user.id))
 
-        print("TOKEN =", token)
+        web_url = f"{base_url}/auth?token={token}"
 
-        web_url = f"{settings.web_base_url}/auth?token={token}"
-
-        print("FINAL URL =", web_url)
+        print("WEB URL:", web_url)
 
         await message.reply(
-            f"🌐 WEB LINK:\n\n{web_url}"
+            f"🌐 WEB LINK\n\n{web_url}\n\n✨ 𝐹𝛥𝐺𝑈."
         )
 
     except Exception as e:
-        print("WEB ERROR:", repr(e))
-        await message.reply(f"ERROR:\n{repr(e)}")
+        print("WEB ERROR:", e)
+        await message.reply(
+            f"❌ WEB ERROR\n\n{str(e)}"
+        )
 
 @Client.on_message(filters.command("login") & filters.private)
 async def login_command(client, message: Message):
