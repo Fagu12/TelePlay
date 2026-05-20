@@ -382,24 +382,33 @@ async def newfolder_command(client, message: Message):
 
 @Client.on_message(filters.command("web") & filters.private)
 async def web_command(client, message: Message):
-    """Get authenticated web interface link."""
-    user = await get_or_create_user(
-        message.from_user.id,
-        message.from_user.username,
-        message.from_user.first_name,
-        message.from_user.last_name,
-    )
-    
-    token = create_access_token(message.from_user.id)
-    web_url = f"{settings.web_base_url}/auth?token={token}"
-    
-    await message.reply(
-        "🌐 **Web Interface**\n\n"
-        "Click the link below to access your files:\n"
-        f"👉 {web_url}\n\n"
-        "__(Link expires in 15 minutes)__"
-    )
+    try:
+        print("WEB COMMAND START")
 
+        await get_or_create_user(
+            message.from_user.id,
+            message.from_user.username,
+            message.from_user.first_name,
+            message.from_user.last_name,
+        )
+
+        print("WEB_BASE_URL =", settings.web_base_url)
+
+        token = create_access_token(message.from_user.id)
+
+        print("TOKEN =", token)
+
+        web_url = f"{settings.web_base_url}/auth?token={token}"
+
+        print("FINAL URL =", web_url)
+
+        await message.reply(
+            f"🌐 WEB LINK:\n\n{web_url}"
+        )
+
+    except Exception as e:
+        print("WEB ERROR:", repr(e))
+        await message.reply(f"ERROR:\n{repr(e)}")
 
 @Client.on_message(filters.command("login") & filters.private)
 async def login_command(client, message: Message):
